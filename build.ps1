@@ -35,11 +35,12 @@ $distDocs = Join-Path $dist 'docs'
 if (Test-Path $distDocs) { Remove-Item -Recurse -Force $distDocs }
 Copy-Item -Path (Join-Path $root 'docs') -Destination $dist -Recurse -Force
 Copy-Item -Path (Join-Path $root 'README.md') -Destination $dist -Force
+Copy-Item -Path (Join-Path $root 'README.en.md') -Destination $dist -Force
 Copy-Item -Path (Join-Path $root 'LICENSE') -Destination $dist -Force
 Copy-Item -Path (Join-Path $root 'CHANGELOG.md') -Destination $dist -Force
 $zip = Join-Path $dist 'CueDeck-1.0.zip'
 if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path $exe, (Join-Path $root 'README.md'), (Join-Path $root 'LICENSE'), (Join-Path $root 'CHANGELOG.md'), $distDocs -DestinationPath $zip -Force
+Compress-Archive -Path $exe, (Join-Path $root 'README.md'), (Join-Path $root 'README.en.md'), (Join-Path $root 'LICENSE'), (Join-Path $root 'CHANGELOG.md'), $distDocs -DestinationPath $zip -Force
 $hashExe = (Get-FileHash $exe -Algorithm SHA256).Hash
 $hashZip = (Get-FileHash $zip -Algorithm SHA256).Hash
 $checksums = @(

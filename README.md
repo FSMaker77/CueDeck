@@ -1,3 +1,5 @@
+<p align="center"><b>🇮🇹 Italiano</b> · <a href="README.en.md">🇬🇧 English</a></p>
+
 # CueDeck
 
 **La libreria e il mounter di CD virtuali per Windows.** CueDeck apre i file `.cue` + `.bin` (e anche gli `.iso`) come unità CD virtuali, senza installare driver e senza richiedere privilegi di amministratore per i CD dati.
@@ -58,7 +60,7 @@
 ### Versione compilata
 
 - **`dist/CueDeck.exe`** — applicazione portable, nessuna installazione.
-- **`dist/CueDeck-1.0.zip`** — archivio con exe, README, licenza e screenshot.
+- **`dist/CueDeck-1.0.zip`** — archivio con exe, README (IT/EN), licenza e screenshot.
 - **[Releases](https://github.com/FSMaker77/CueDeck/releases)** — la release `v1.0.0` contiene gli stessi file scaricabili singolarmente.
 - **Hash SHA-256** — in `dist/SHA256SUMS.txt` e negli asset della release.
 
