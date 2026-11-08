@@ -996,6 +996,234 @@ namespace CueDeck
             }
         }
 
+        private void RequestConvertToIso(DiscEntry entry)
+        {
+            if (_busy || entry == null) return;
+            CueSheet sheet = GetSheet(entry);
+            if (sheet == null)
+            {
+                ShowToast("error", "Disco non leggibile", "Impossibile leggere il CUE/BIN.", "", "");
+                return;
+            }
+            if (sheet.Kind == DiscKinds.Iso)
+            {
+                ShowToast("info", "Formato già ISO", "Questo disco è già un file ISO.", "", "");
+                return;
+            }
+            if (!sheet.CanMountNative)
+            {
+                ShowToast("warning", "Nessuna traccia dati", "Questo disco non contiene una traccia dati convertibile in ISO.", "", "");
+                return;
+            }
+
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Title = sheet.HasAudio
+                    ? "Converti in ISO (solo traccia dati, le tracce audio non saranno incluse)"
+                    : "Converti in ISO";
+                dialog.Filter = "Immagine ISO (*.iso)|*.iso";
+                dialog.AddExtension = true;
+                dialog.DefaultExt = "iso";
+                dialog.OverwritePrompt = true;
+                string safe = TextUtil.SanitizeFileName(entry.Title, 90);
+                dialog.FileName = safe + ".iso";
+                try
+                {
+                    string dir = Path.GetDirectoryName(entry.Path);
+                    if (Directory.Exists(dir)) dialog.InitialDirectory = dir;
+                }
+                catch { }
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                StartConvertToIso(sheet, dialog.FileName);
+            }
+        }
+
+        private void StartConvertToIso(CueSheet sheet, string outputPath)
+        {
+            if (_busy) return;
+            StartBusy("Converto in ISO", "Estraggo la traccia dati...", false, true);
+            CancellationTokenSource cts = _busyCts;
+            CancellationToken token = cts.Token;
+            CueSheet sheetLocal = sheet;
+            bool hadAudio = sheet.HasAudio;
+
+            Task.Run(delegate
+            {
+                try
+                {
+                    Progress<int> extraction = new Progress<int>(delegate(int percent)
+                    {
+                        BusyProgress((int)(percent * 0.85), "Estraggo la traccia dati...");
+                    });
+                    string cachedIso = IsoBuilder.GetOrBuild(sheetLocal, extraction, token);
+                    token.ThrowIfCancellationRequested();
+                    PostBusy(88, "Copio il file ISO...");
+                    Progress<int> copy = new Progress<int>(delegate(int percent)
+                    {
+                        BusyProgress(88 + (int)(percent * 0.12), "Copio il file ISO...");
+                    });
+                    CopyFileWithProgress(cachedIso, outputPath, copy, token);
+                    PostUi(delegate
+                    {
+                        EndBusy();
+                        RefreshCacheSize();
+                        string message = Path.GetFileName(outputPath);
+                        if (hadAudio) message += " · tracce audio non incluse";
+                        ShowToast("success", "ISO creata", message, "openFolder", Path.GetDirectoryName(outputPath));
+                    });
+                }
+                catch (OperationCanceledException)
+                {
+                    PostUi(delegate
+                    {
+                        EndBusy();
+                        ShowToast("info", "Conversione annullata", "Il file ISO non è stato creato.", "", "");
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Convert to ISO " + outputPath, ex);
+                    PostUi(delegate
+                    {
+                        EndBusy();
+                        ShowToast("error", "Conversione non riuscita", ex.Message, "", "");
+                    });
+                }
+            });
+        }
+
+        private void RequestConvertToCueBin(DiscEntry entry)
+        {
+            if (_busy || entry == null) return;
+            CueSheet sheet = GetSheet(entry);
+            if (sheet == null || sheet.Kind != DiscKinds.Iso)
+            {
+                ShowToast("info", "Conversione non disponibile", "Questa funzione converte un file ISO in CUE/BIN.", "", "");
+                return;
+            }
+            if (!File.Exists(sheet.SourcePath))
+            {
+                ShowToast("error", "File non trovato", sheet.SourcePath, "", "");
+                return;
+            }
+
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Title = "Converti ISO in CUE/BIN (MODE1/2352, solo dati)";
+                dialog.Filter = "CUE sheet (*.cue)|*.cue";
+                dialog.AddExtension = true;
+                dialog.DefaultExt = "cue";
+                dialog.OverwritePrompt = true;
+                string safe = TextUtil.SanitizeFileName(entry.Title, 90);
+                dialog.FileName = safe + ".cue";
+                try
+                {
+                    string dir = Path.GetDirectoryName(entry.Path);
+                    if (Directory.Exists(dir)) dialog.InitialDirectory = dir;
+                }
+                catch { }
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                string cuePath = dialog.FileName;
+                string binPath = Path.ChangeExtension(cuePath, ".bin");
+                if (File.Exists(binPath))
+                {
+                    ShowToast("warning", "File BIN già esistente",
+                        "Scegli un altro nome per il CUE: il BIN corrispondente esiste già.", "", "");
+                    return;
+                }
+                StartConvertToCueBin(sheet.SourcePath, cuePath);
+            }
+        }
+
+        private void StartConvertToCueBin(string isoPath, string cuePath)
+        {
+            if (_busy) return;
+            StartBusy("Converto in CUE/BIN", "Genero i settori MODE1/2352...", false, true);
+            CancellationTokenSource cts = _busyCts;
+            CancellationToken token = cts.Token;
+
+            Task.Run(delegate
+            {
+                try
+                {
+                    Progress<int> progress = new Progress<int>(delegate(int percent)
+                    {
+                        BusyProgress(percent, "Genero i settori MODE1/2352...");
+                    });
+                    ImageConverter.IsoToCueBin(isoPath, cuePath, progress, token);
+                    PostUi(delegate
+                    {
+                        EndBusy();
+                        ShowToast("success", "CUE/BIN creati",
+                            Path.GetFileName(cuePath) + " + " + Path.GetFileName(Path.ChangeExtension(cuePath, ".bin")),
+                            "openFolder", Path.GetDirectoryName(cuePath));
+                    });
+                }
+                catch (OperationCanceledException)
+                {
+                    PostUi(delegate
+                    {
+                        EndBusy();
+                        ShowToast("info", "Conversione annullata", "I file non sono stati creati.", "", "");
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Convert to CUE/BIN " + cuePath, ex);
+                    PostUi(delegate
+                    {
+                        EndBusy();
+                        ShowToast("error", "Conversione non riuscita", ex.Message, "", "");
+                    });
+                }
+            });
+        }
+
+        private static void CopyFileWithProgress(string source, string destination, IProgress<int> progress, CancellationToken token)
+        {
+            string temp = destination + ".part";
+            try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+            try
+            {
+                long length = new FileInfo(source).Length;
+                long done = 0;
+                int lastPercent = -1;
+                using (FileStream input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1024 * 1024, FileOptions.SequentialScan))
+                using (FileStream output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1024 * 1024))
+                {
+                    byte[] buffer = new byte[1024 * 1024];
+                    while (true)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        int read = input.Read(buffer, 0, buffer.Length);
+                        if (read <= 0) break;
+                        output.Write(buffer, 0, read);
+                        done += read;
+                        if (progress != null)
+                        {
+                            int percent = (int)Math.Min(99, done * 100L / Math.Max(1, length));
+                            if (percent != lastPercent) { lastPercent = percent; progress.Report(percent); }
+                        }
+                    }
+                    output.Flush();
+                }
+                token.ThrowIfCancellationRequested();
+                if (File.Exists(destination))
+                {
+                    File.SetAttributes(destination, FileAttributes.Normal);
+                    File.Delete(destination);
+                }
+                File.Move(temp, destination);
+                if (progress != null) progress.Report(100);
+            }
+            catch
+            {
+                try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+                throw;
+            }
+        }
+
         private void RequestExportAudio(CueSheet sheet)
         {
             if (sheet == null || !sheet.HasAudio)
@@ -1647,6 +1875,14 @@ namespace CueDeck
                     menu.Items.Add(MakeMenuItem("Riproduci audio", delegate { OpenAudioPlayer(sheet, 0); }));
                 menu.Items.Add(MakeMenuItem("Esporta tracce audio...", delegate { RequestExportAudio(sheet); }));
             }
+            if (sheet != null && sheet.Kind != DiscKinds.Iso && sheet.CanMountNative)
+            {
+                menu.Items.Add(MakeMenuItem("Converti in ISO...", delegate { RequestConvertToIso(entry); }));
+            }
+            if (sheet != null && sheet.Kind == DiscKinds.Iso)
+            {
+                menu.Items.Add(MakeMenuItem("Converti in CUE/BIN...", delegate { RequestConvertToCueBin(entry); }));
+            }
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(MakeMenuItem(entry.Favorite ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti", delegate { ToggleFavorite(entry); }));
             menu.Items.Add(MakeMenuItem("Imposta copertina...", delegate { SetCover(entry); }));
@@ -1845,6 +2081,16 @@ namespace CueDeck
                 DiscEntry favoriteEntry = _library.FindById(arg);
                 if (favoriteEntry != null) SelectEntryInternal(favoriteEntry);
                 ToggleFavorite(favoriteEntry);
+                return;
+            }
+            if (action == "convertToIso")
+            {
+                RequestConvertToIso(_library.FindById(arg));
+                return;
+            }
+            if (action == "convertToCueBin")
+            {
+                RequestConvertToCueBin(_library.FindById(arg));
                 return;
             }
             if (action == "detailPrimary") { DetailPrimaryAction(); return; }

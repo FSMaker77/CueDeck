@@ -622,8 +622,9 @@ namespace CueDeck
                 for (int i = 0; i < actions.Count; i++)
                 {
                     RectangleF button = new RectangleF(_detailRect.X + pad + i * (width + gap), y, width, S(32));
-                    DrawOutlineButton(g, button, actions[i].Label, actions[i].Icon, Hover(actions[i].Action, ""), false);
-                    AddHotspot(actions[i].Action, actions[i].Action == "downloadWinCDEmu" ? "" : "", button, true);
+                    string actionArg = (actions[i].Action == "convertToIso" || actions[i].Action == "convertToCueBin") ? entry.Id : "";
+                    DrawOutlineButton(g, button, actions[i].Label, actions[i].Icon, Hover(actions[i].Action, actionArg), false);
+                    AddHotspot(actions[i].Action, actionArg, button, true);
                     if (actions[i].Action == "detailFullMount" && !_winCDEmuAvailable)
                     {
                         // Should not happen, but keep the command safe.
@@ -752,6 +753,10 @@ namespace CueDeck
                 {
                     actions.Add(new DetailAction("Completo", "detailFullMount", "disc"));
                 }
+                if (sheet != null && sheet.Kind != DiscKinds.Iso && sheet.CanMountNative && actions.Count < 3)
+                    actions.Add(new DetailAction("ISO", "convertToIso", "download"));
+                else if (sheet != null && sheet.Kind == DiscKinds.Iso && actions.Count < 3)
+                    actions.Add(new DetailAction("CUE/BIN", "convertToCueBin", "download"));
                 if (File.Exists(entry.Path))
                     actions.Add(new DetailAction("Cartella", "detailReveal", "folder"));
             }
@@ -929,7 +934,7 @@ namespace CueDeck
             AddHotspot("clearCache", "", clear, true);
 
             RectangleF footer = new RectangleF(x, card.Bottom - S(36), width - S(180), S(22));
-            Theme.DrawText(g, "CueDeck 1.0  ·  .NET Framework 4.8  ·  Nessun dato lascia il PC", Body(9.5f), Theme.Muted2,
+            Theme.DrawText(g, "CueDeck 1.1  ·  .NET Framework 4.8  ·  Nessun dato lascia il PC", Body(9.5f), Theme.Muted2,
                 footer, StringAlignment.Near, StringAlignment.Center);
             RectangleF dataFolder = new RectangleF(card.Right - S(200), card.Bottom - S(38), S(174), S(26));
             Theme.DrawText(g, "Apri cartella dati", Body(10f), Hover("openDataFolder", "") ? Theme.Accent : Theme.Muted,

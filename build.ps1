@@ -38,14 +38,15 @@ Copy-Item -Path (Join-Path $root 'README.md') -Destination $dist -Force
 Copy-Item -Path (Join-Path $root 'README.en.md') -Destination $dist -Force
 Copy-Item -Path (Join-Path $root 'LICENSE') -Destination $dist -Force
 Copy-Item -Path (Join-Path $root 'CHANGELOG.md') -Destination $dist -Force
-$zip = Join-Path $dist 'CueDeck-1.0.zip'
+$zip = Join-Path $dist 'CueDeck-1.1.zip'
+Get-ChildItem -Path $dist -Filter 'CueDeck-*.zip' -ErrorAction SilentlyContinue | Remove-Item -Force
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path $exe, (Join-Path $root 'README.md'), (Join-Path $root 'README.en.md'), (Join-Path $root 'LICENSE'), (Join-Path $root 'CHANGELOG.md'), $distDocs -DestinationPath $zip -Force
 $hashExe = (Get-FileHash $exe -Algorithm SHA256).Hash
 $hashZip = (Get-FileHash $zip -Algorithm SHA256).Hash
 $checksums = @(
     ($hashExe + '  CueDeck.exe'),
-    ($hashZip + '  CueDeck-1.0.zip')
+    ($hashZip + '  CueDeck-1.1.zip')
 )
 $checksums | Set-Content -LiteralPath (Join-Path $dist 'SHA256SUMS.txt') -Encoding ASCII
 

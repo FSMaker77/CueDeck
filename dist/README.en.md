@@ -1,4 +1,4 @@
-<p align="center"><a href="README.md">🇮🇹 Italiano</a> · <b>🇬🇧 English</b></p>
+﻿<p align="center"><a href="README.md">🇮🇹 Italiano</a> · <b>🇬🇧 English</b></p>
 
 # CueDeck
 
@@ -9,7 +9,7 @@
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows)
 ![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.8-512BD4)
 ![MIT License](https://img.shields.io/badge/license-MIT-green)
-![Portable](https://img.shields.io/badge/EXE-214%20KB-blue)
+![Portable](https://img.shields.io/badge/EXE-224%20KB-blue)
 
 ![CueDeck with two virtual CDs mounted](docs/screenshots/02-library.png)
 
@@ -20,6 +20,7 @@
 - [Download and launch](#download-and-launch)
 - [Quick start](#quick-start)
 - [How mounting works](#how-mounting-works)
+- [CUE/BIN ↔ ISO conversion](#cuebin--iso-conversion)
 - [Native mode vs full mode](#native-mode-vs-full-mode)
 - [Supported formats](#supported-formats)
 - [Interface guide](#interface-guide)
@@ -42,9 +43,10 @@
 - **Multiple virtual CDs at once.** Each mounted disc gets its own drive letter, so you can keep several games or archives available like with a real CD drive.
 - **A proper library.** Drag files into the window, search, filter data/audio discs, sort, mark favourites, set a cover, and rename discs.
 - **Built-in audio CD support.** Audio CDs have no file system to mount: CueDeck reads the tracks from the CUE/BIN, plays them in the integrated player, and exports them to WAV.
+- **CUE/BIN ↔ ISO conversion.** Export the data track of a CUE/BIN to ISO, or generate a `MODE1/2352` CUE/BIN with sync, header, EDC and ECC from an ISO, directly in the app.
 - **Tray and single instance.** Closing the window keeps CueDeck in the tray with the mounted discs alive. One instance handles every file opened from Explorer.
 - **Managed cache.** Temporary ISOs and audio previews live in `%LOCALAPPDATA%\CueDeck` and can be cleared from Settings.
-- **Small and portable.** A single `.exe` of about 214 KB, .NET Framework 4.8 (included in Windows 11), no external dependencies.
+- **Small and portable.** A single `.exe` of about 224 KB, .NET Framework 4.8 (included in Windows 11), no external dependencies.
 - **No telemetry.** CueDeck never contacts a server: the library and settings stay on your PC.
 
 ## Requirements
@@ -62,8 +64,8 @@
 ### Compiled build
 
 - **`dist/CueDeck.exe`** — portable application, no installation.
-- **`dist/CueDeck-1.0.zip`** — archive with the exe, README (IT/EN), licence and screenshots.
-- **[Releases](https://github.com/FSMaker77/CueDeck/releases)** — release `v1.0.0` provides the same files as individual downloads.
+- **`dist/CueDeck-1.1.zip`** — archive with the exe, README (IT/EN), licence and screenshots.
+- **[Releases](https://github.com/FSMaker77/CueDeck/releases)** — release `v1.1.0` provides the same files as individual downloads.
 - **SHA-256 hashes** — in `dist/SHA256SUMS.txt` and in the release assets.
 
 CueDeck is portable: copy `CueDeck.exe` wherever you like. The library and settings are stored in `%LOCALAPPDATA%\CueDeck`, not next to the exe.
@@ -130,6 +132,28 @@ A CUE/BIN is a raw-sector CD image. For a data CD CueDeck:
 
 The cache is in `%LOCALAPPDATA%\CueDeck\Cache`. The first mount converts the disc; later mounts are instant until the source or CUE changes.
 
+## CUE/BIN ↔ ISO conversion
+
+CueDeck can convert discs directly from the UI, without external tools.
+
+### CUE/BIN → ISO
+
+1. right-click the disc card (or use the **ISO** button in the right panel);
+2. choose **Converti in ISO…**;
+3. choose the destination ISO file.
+
+Only the **data track** is extracted and a mountable ISO is produced. If the disc has audio tracks they are not included: the ISO contains only the data file system. If there are multiple data tracks, the first native data track is used.
+
+### ISO → CUE/BIN
+
+1. right-click the ISO (or use the **CUE/BIN** button in the right panel);
+2. choose **Converti in CUE/BIN…**;
+3. choose the destination `.cue` file: the `.bin` is created next to it.
+
+The generated BIN uses **`MODE1/2352`** with sync, MSF header, EDC and ECC. It is a standard data image that CueDeck can mount and other CUE/BIN-compatible tools can use. Audio tracks cannot be recreated from an ISO.
+
+The conversion shows progress, can be cancelled, and never modifies the original files.
+
 ## Native mode vs full mode
 
 | | Native mode | Full mode (WinCDEmu) |
@@ -158,6 +182,7 @@ Native mode is the default for data CDs. If a disc has audio tracks or an unsupp
 | Multi-file CUE, `INDEX 00/01`, `PREGAP` | Supported |
 | CUE with WAVE files for audio | Playback/export |
 | Pure audio CD | Player + WAV export |
+| ISO → CUE/BIN | `MODE1/2352` with sync, header, EDC/ECC (data only) |
 | CUE with MP3/AIFF/MOTOROLA | Warning; unsupported by the built-in player |
 
 ## Interface guide
@@ -182,7 +207,7 @@ Each card shows a cover (or generated art), format, track count, size and mount 
 
 - Cover, title, performer and metadata.
 - Main action: mount, play, unmount or open.
-- Secondary actions: open folder, audio, export, full mount.
+- Secondary actions: open folder, audio, export, full mount, ISO/CUE-BIN conversion.
 - Track list with type, duration and play buttons for audio tracks.
 - Source file path.
 
@@ -290,6 +315,7 @@ Some systems have no MCI/WAV output device. CueDeck shows an **Apri con Windows*
 - External audio formats (MP3/AIFF/MOTOROLA) in CUE sheets are not supported by the built-in player.
 - Native mode requires Windows to recognise the ISO file system (ISO 9660/UDF).
 - Full mode depends on WinCDEmu and its drive-letter configuration.
+- ISO → CUE/BIN conversion creates a data track only; audio tracks cannot be recreated.
 
 ## Build from source
 
@@ -304,7 +330,7 @@ The build:
 1. generates/updates the icon `assets/cuedeck.ico`;
 2. compiles every `src/*.cs` file with `csc.exe`;
 3. produces `dist/CueDeck.exe`;
-4. creates `dist/CueDeck-1.0.zip` with the exe, README (IT/EN), licence and screenshots.
+4. creates `dist/CueDeck-1.1.zip` with the exe, README (IT/EN), licence and screenshots.
 
 Build requirements: .NET Framework 4.8 and `System.Web.Extensions.dll` (part of the framework). No NuGet, no extra SDK.
 
@@ -320,6 +346,7 @@ CueDeck/
 │  ├─ UiPrimitives.cs         hotspots, dark menu, image cache
 │  ├─ CueParser.cs            CUE/BIN parser and metadata
 │  ├─ IsoBuilder.cs           data track → ISO conversion + cache
+│  ├─ ImageConverter.cs       ISO → CUE/BIN MODE1/2352 with EDC/ECC
 │  ├─ NativeMounter.cs        mounting through virtdisk.dll
 │  ├─ WinCDEmuMounter.cs       optional WinCDEmu integration
 │  ├─ AudioTools.cs            WAV extraction and MCI player
@@ -343,7 +370,8 @@ The engine tests cover:
 
 - parsing data, audio and multi-file CUE sheets;
 - ISO conversion with byte-for-byte comparison;
-- WAV extraction and exporting all tracks;
+- ISO → CUE/BIN conversion and CUE/BIN → ISO roundtrip;
+- WAV extraction and export of all tracks;
 - standalone BIN detection;
 - real native mount, reading a file from the drive, and unmounting.
 
@@ -354,7 +382,7 @@ $fw = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319"
 & "$fw\csc.exe" /nologo /codepage:65001 /out:tests\CoreTests.exe /langversion:5 `
   /r:System.dll /r:System.Core.dll /r:"$fw\System.Web.Extensions.dll" `
   tests\CoreTests.cs src\Models.cs src\CueParser.cs src\IsoBuilder.cs `
-  src\Store.cs src\NativeMounter.cs src\AudioTools.cs
+  src\Store.cs src\NativeMounter.cs src\AudioTools.cs src\ImageConverter.cs
 
 tests\CoreTests.exe "C:\path\to\test-artifacts"
 ```
@@ -375,4 +403,4 @@ CueDeck code: **MIT** — see [LICENSE](LICENSE).
 
 WinCDEmu is a separate project by Sysprogs OÜ, distributed under the LGPL. CueDeck does not bundle or redistribute the WinCDEmu driver. The Virtual Disk and MCI APIs are provided by Windows.
 
-CueDeck 1.0 — built with .NET Framework 4.8 and WinForms.
+CueDeck 1.1 — built with .NET Framework 4.8 and WinForms.

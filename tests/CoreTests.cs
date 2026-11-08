@@ -39,6 +39,7 @@ namespace CueDeck
                 TestMultiFile();
                 TestStandaloneBin();
                 TestExportAudio();
+                TestIsoToCueBin();
                 TestMount();
             }
             catch (Exception ex)
@@ -163,6 +164,48 @@ namespace CueDeck
                 Check(files.Count > 0 && File.Exists(files[0]), "wav file exists");
                 if (files.Count > 0)
                     Check(new FileInfo(files[0]).Length == 44 + 5 * 2352, "exported wav has expected size");
+            }
+            finally
+            {
+                try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { }
+            }
+        }
+
+        private static void TestIsoToCueBin()
+        {
+            Console.WriteLine("\n[iso to cue/bin]");
+            string dir = Path.Combine(Path.GetTempPath(), "cuedeck-convert-test");
+            string cue = Path.Combine(dir, "roundtrip.cue");
+            try
+            {
+                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                Directory.CreateDirectory(dir);
+                ImageConverter.IsoToCueBin(Path.Combine(_dir, "test.iso"), cue, null, CancellationToken.None);
+                string bin = Path.ChangeExtension(cue, ".bin");
+                Check(File.Exists(cue), "cue created");
+                Check(File.Exists(bin), "bin created");
+                Check(new FileInfo(bin).Length == 35 * 2352, "bin size 2352 sectors");
+                byte[] header = new byte[16];
+                using (FileStream fs = File.OpenRead(bin)) fs.Read(header, 0, 16);
+                Check(header[0] == 0 && header[11] == 0 && header[15] == 1, "sync/header mode1");
+                CueSheet sheet = CueParser.ParseCue(cue);
+                Check(sheet.NativeDataTrack != null && sheet.NativeDataTrack.Sectors == 35, "generated cue parses to 35 sectors");
+                string roundtripIso = IsoBuilder.GetOrBuild(sheet, null, CancellationToken.None);
+                byte[] expected = File.ReadAllBytes(Path.Combine(_dir, "test.iso"));
+                byte[] actual = File.ReadAllBytes(roundtripIso);
+                bool same = expected.Length == actual.Length;
+                if (same)
+                {
+                    for (int i = 0; i < expected.Length; i++)
+                    {
+                        if (expected[i] != actual[i]) { same = false; break; }
+                    }
+                }
+                Check(same, "iso -> cue/bin -> iso roundtrip matches");
+            }
+            catch (Exception ex)
+            {
+                Check(false, "iso to cue/bin failed: " + ex.Message);
             }
             finally
             {

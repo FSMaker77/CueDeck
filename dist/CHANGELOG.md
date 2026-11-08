@@ -2,6 +2,21 @@
 
 Tutte le modifiche rilevanti di CueDeck.
 
+## 1.1.0 — 2026-11-08
+
+### Aggiunto
+
+- Conversione **CUE/BIN → ISO** dall'interfaccia, con estrazione della traccia dati e salvataggio in un file ISO.
+- Conversione **ISO → CUE/BIN** con generazione di settori `MODE1/2352`, sync, header MSF, EDC ed ECC.
+- Azioni di conversione nel menu contestuale e nel pannello di dettaglio.
+- Avanzamento e annullamento delle conversioni.
+- Test di roundtrip ISO → CUE/BIN → ISO.
+
+### Note
+
+- La conversione CUE/BIN → ISO include solo la traccia dati: le tracce audio non sono incluse.
+- La conversione ISO → CUE/BIN è solo dati e non può ricreare tracce audio.
+
 ## 1.0.0 — 2026-11-08
 
 ### Aggiunto
